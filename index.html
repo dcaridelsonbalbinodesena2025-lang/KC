@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KCM - CONTROLO REMOTO 24H</title>
+    <style>
+        /* CSS IDÊNTICO AO SEU ORIGINAL */
+        :root { --neon-blue: #1e90ff; --neon-green: #00ff88; --neon-red: #ff3355; --gale: #f0b90b; --bg-dark: #05070a; --royal-blue: #0047AB; }
+        body { background: var(--bg-dark); color: white; font-family: 'Segoe UI', sans-serif; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; }
+        .logo { font-size: 22px; font-weight: 900; color: #fff; margin: 10px 0; }
+        .logo span { color: var(--neon-blue); font-style: italic; }
+        .painel-financeiro { background: #111418; border: 2px solid var(--neon-green); border-radius: 15px; width: 95%; max-width: 600px; padding: 15px; margin-bottom: 10px; }
+        .fin-input { width: 90%; background: #000; border: 1px solid #333; color: #fff; padding: 8px; border-radius: 5px; font-weight: bold; }
+        .btn-salvar { background: var(--neon-green); color: #000; border: none; padding: 10px 15px; border-radius: 5px; font-weight: 900; cursor: pointer; width: 100%; margin-top: 10px; }
+        .painel-estrat { background: #111418; border: 1px solid #333; border-radius: 15px; width: 95%; max-width: 600px; padding: 15px; margin-bottom: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .estrat-card { background: #000; padding: 10px; border-radius: 10px; border: 1px solid #222; text-align: center; }
+        .btn-toggle { padding: 5px 10px; font-size: 10px; font-weight: bold; border-radius: 5px; border: none; cursor: pointer; width: 100%; }
+        .btn-on { background: var(--neon-green); color: #000; }
+        .btn-off { background: var(--neon-red); color: #fff; }
+        .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; width: 100%; max-width: 600px; }
+        .card { background: #111418; border-radius: 20px; padding: 12px; border: 1px solid #1e2228; }
+        .select-ativo { background: #0d0f12; color: #fff; border: 1px solid #444; font-size: 10px; width: 100%; padding: 5px; margin-top: 10px; border-radius: 5px; }
+        .srv-status { font-size: 10px; padding: 5px 15px; border-radius: 20px; background: #111; margin-bottom: 10px; border: 1px solid var(--neon-blue); }
+    </style>
+</head>
+<body>
+
+    <div class="logo">K.C<span>📈</span>M REMOTE-CONTROL</div>
+    <div id="conexao" class="srv-status">CONECTANDO AO MOTOR NO RENDER...</div>
+
+    <div class="painel-financeiro">
+        <div style="display: flex; gap: 10px;">
+            <input type="number" id="inpBanca" class="fin-input" placeholder="Banca">
+            <input type="number" id="inpPayout" class="fin-input" placeholder="Payout %">
+        </div>
+        <button class="btn-salvar" onclick="enviarConfig()">ATUALIZAR MOTOR NO SERVIDOR</button>
+    </div>
+
+    <div class="grid-container" id="grid"></div>
+
+<script>
+    // URL DO SEU RENDER (SUBSTITUA AQUI)
+    const API_URL = "https://URL_DO_SEU_SERVIDOR_NO_RENDER.onrender.com";
+
+    const LISTA_COMPLETA = [
+        { id: "NONE", nome: "❌ DESATIVAR SLOT" },
+        { id: "R_10", nome: "📊 Volatility 10" },
+        { id: "R_100", nome: "📊 Volatility 100" },
+        { id: "1HZ10V", nome: "📈 Volatility 10 (1s)" },
+        { id: "BOOM500", nome: "💥 Boom 500" },
+        { id: "frxEURUSD", nome: "💱 EUR/USD" }
+        // ... (Coloque aqui a sua lista completa de ativos)
+    ];
+
+    // Função para avisar o servidor que mudou o ativo
+    async function mudarAtivo(monitorId, ativoId, nomeAtivo) {
+        document.getElementById('conexao').innerText = "ENVIANDO COORDENADAS...";
+        try {
+            await fetch(`${API_URL}/set-ativo?monitor=${monitorId}&id=${ativoId}&nome=${nomeAtivo}`);
+            document.getElementById('conexao').innerText = "MOTOR ATUALIZADO!";
+            setTimeout(sincronizar, 2000);
+        } catch (e) {
+            document.getElementById('conexao').innerText = "ERRO DE CONEXÃO!";
+        }
+    }
+
+    // Função para ler o que o servidor está a fazer agora
+    async function sincronizar() {
+        try {
+            const res = await fetch(`${API_URL}/status`);
+            const data = await res.json();
+            
+            // Atualiza a UI com os dados reais que estão salvos no Render
+            document.getElementById('conexao').innerText = "MOTOR EM EXECUÇÃO 24H";
+            // Aqui você pode atualizar os placares de Win/Loss na tela
+        } catch (e) {
+            document.getElementById('conexao').innerText = "MOTOR OFFLINE";
+        }
+    }
+
+    // Criar os 6 monitores na tela
+    const grid = document.getElementById('grid');
+    for (let i = 1; i <= 6; i++) {
+        let options = LISTA_COMPLETA.map(a => `<option value="${a.id}">${a.nome}</option>`).join('');
+        grid.innerHTML += `
+            <div class="card" id="div-card${i}">
+                <div class="stat-label">MONITOR ${i}</div>
+                <div id="status-card${i}" style="font-size:10px; color:var(--neon-blue)">SINCRONIZANDO...</div>
+                <select class="select-ativo" onchange="mudarAtivo(${i}, this.value, this.options[this.selectedIndex].text)">
+                    ${options}
+                </select>
+            </div>`;
+    }
+
+    // Sincroniza a cada 5 segundos para você ver o progresso
+    setInterval(sincronizar, 5000);
+    sincronizar();
+</script>
+</body>
+</html>
